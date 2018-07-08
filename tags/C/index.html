@@ -62,6 +62,60 @@
     <header class="title">
       
         <h1>
+          <a href="/2018/07/08/Synchronous-vs-Asynchronous-Blocking-vs-Non-Blocking-I-O/">Synchronous vs. Asynchronous, Blocking vs. Non-Blocking I/O</a>
+        </h1>
+      
+      <div class='ListMeta'>
+  <time datetime="2018-07-08T10:21:04.000Z" itemprop="datePublished">
+    2018-07-08
+  </time>
+  
+  | 
+  <ul>
+    
+  <li class="meta-text">
+  { <a href="/tags/IO/">IO</a> }
+  </li>
+
+  <li class="meta-text">
+  { <a href="/tags/C/">C</a> }
+  </li>
+
+
+  </ul>
+  
+  
+</div>
+
+    </header>
+    <div>
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在Unix环境下，有5种基本的I/O模型：</p>
+<ul>
+<li>blocking I/O</li>
+<li>nonblocking I/O</li>
+<li>I/O multiplexing (select and poll)</li>
+<li>signal driven I/O (SIGIO)</li>
+<li>asynchronous I/O (the POSIX aio_ functions)</li>
+</ul>
+<p>对于一个操作I/O的程序来说，首先，程序会由用户态向内核发出请求，由内核态去对相关的硬件进行交互。在数据已经准备完毕后，再由内核拷贝到相应的进程中。这是一个两段执行的过程。</p>
+<p>假设我们目前进行的是Network I/O，我们用Socket去进行数据的读取。首先，我们会等待数据达到我们的网络设备，当数据到达以后，它将会被存储在内核的缓存中。然后，这个数据会从内核的缓存中拷贝到程序的缓存中，以供使用。</p>
+        
+          <div class="more-link">
+            <a href="/2018/07/08/Synchronous-vs-Asynchronous-Blocking-vs-Non-Blocking-I-O/#more">Read On »</a>
+          </div>
+        
+      
+    </div>
+</article>
+
+    </li>
+  
+    <li>
+      <article class='ListView'>
+    <header class="title">
+      
+        <h1>
           <a href="/2018/07/08/Basic-Network-I-O-Techniques/">Basic Network I/O Techniques</a>
         </h1>
       
