@@ -50,6 +50,165 @@
     <header class="title">
       
         <h1>
+          <a href="/2018/02/02/Memory-Layout/">Memory Layout</a>
+        </h1>
+      
+      <div class='ListMeta'>
+  <time datetime="2018-02-02T01:31:22.000Z" itemprop="datePublished">
+    2018-02-02
+  </time>
+  
+  | 
+  <ul>
+    
+  <li class="meta-text">
+  { <a href="/tags/C/">C</a> }
+  </li>
+
+
+  </ul>
+  
+  
+</div>
+
+    </header>
+    <div>
+      
+        <p>今天做了一个简单的测试，简单地探究了一下GCC下的Memory Layout。</p>
+<p>程序的运行环境如下：</p>
+<pre><code>Linux indy2-login0 3.10.0-327.36.3.el7.x86_64 #1 SMP Mon Oct 24 16:09:20 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11)
+</code></pre><p>程序如下：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char **argv){
+  int i,j,k;
+  double d;
+  float f;
+  void *p;
+
+  struct fred {
+     int a;
+     short s;
+     double d;
+     double d2;
+     short s2;
+  }var;
+
+  double a[30][30];
+  int *pd2;
+  double *pd;
+  pd2 = (int*) malloc(sizeof(int));
+  pd = (double*)malloc(sizeof(double));
+
+  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
+  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
+  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
+  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
+  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
+  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
+
+  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
+  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
+  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
+  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
+  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
+  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
+
+  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
+  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
+  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
+}
+</code></pre><p>采用gcc编译并运行这段程序，得到了如下的结果：</p>
+<pre><code>i 4 00007fffffffdc7c
+j 4 00007fffffffdc78
+k 4 00007fffffffdc74
+d 8 00007fffffffdc68
+f 4 00007fffffffdc64
+p 8 00007fffffffdc58
+var 32 00007fffffffdc30
+var.a 4 00007fffffffdc30
+var.s 2 00007fffffffdc34
+var.d 8 00007fffffffdc38
+var.s2 2 00007fffffffdc48
+var.d2 8 00007fffffffdc40
+a 7200 00007fffffffc010
+pd 8 0000000000602030
+pd2 8 0000000000602010
+</code></pre><p>可以看到，对于一个primitive，在该测试环境下，变量在stack上由高向低分配。对于一个结构体内部，所有的变量则在结构体对应的地址空间上由低向高顺序分配。</p>
+<p>这里注意到，对于var这个由1个int，2个short，2个double组成的结构体，理论上，这个结构体应该占据24byte的空间，然而实际上var这个结构体占据了32byte。这是由于GCC下会对该程序进行一个内存对齐（alignment）。通常来说，内存总线以字（word， 4byte）为最小单位进行传输。为了避免传输的数据被截断，需要重新指向来获取数据所造成的额外的开销，GCC对这个程序进行了内存对齐的处理。变量s是一个short型变量，在该环境下占2byte。假设紧随其后的double变量d在内存上紧接着s存储，当数据传输过来时，由于以字为单位进行传输，变量d将会被截断，为了恢复变量d需要做额外的处理。因此，在此处s后面，GCC填充了2byte的占位字节，使其称为一个完整的word，而相应的d则紧随其后，在两个齐整的word下存储。这就是为什么var这个结构体使用了比理想状态下更多的空间。</p>
+<p>下面我们对于代码进行小小的调整，我们修改var所对应的结构体，将s2变量的位置提升到s之下，其余部分不变：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char **argv){
+  int i,j,k;
+  double d;
+  float f;
+  void *p;
+
+  struct fred {
+     int a;
+     short s;
+     short s2;
+     double d;
+     double d2;
+  }var;
+
+  double a[30][30];
+  int *pd2;
+  double *pd;
+  pd2 = (int*) malloc(sizeof(int));
+  pd = (double*)malloc(sizeof(double));
+
+  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
+  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
+  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
+  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
+  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
+  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
+
+  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
+  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
+  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
+  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
+  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
+  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
+
+  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
+  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
+  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
+}
+</code></pre><p>然后编译执行程序，我们得到的如下的结果：</p>
+<pre><code>i 4 00007fffffffdc7c
+j 4 00007fffffffdc78
+k 4 00007fffffffdc74
+d 8 00007fffffffdc68
+f 4 00007fffffffdc64
+p 8 00007fffffffdc58
+var 24 00007fffffffdc40
+var.a 4 00007fffffffdc40
+var.s 2 00007fffffffdc44
+var.d 8 00007fffffffdc48
+var.s2 2 00007fffffffdc46
+var.d2 8 00007fffffffdc50
+a 7200 00007fffffffc020
+pd 8 0000000000602030
+pd2 8 0000000000602010
+</code></pre><p>此处我们看到，结构体对象var与我们预想的一样，占用了24byte的空间。这是因为简单的重排，使两个short变量s与s1正好占据一个word，避免了各自的对齐从而减少了空间的开销。由此可见，对于C语言中的结构体，在GCC下所有的成员变量会以对应的顺序进行存储，对于无法整齐排列在内存中的变量，会进行内存对齐，通过填充空的占位字节使其占据完整的一个word。通过对于变量顺序的调整，可以减少程序中的内存的使用！</p>
+
+      
+    </div>
+</article>
+
+    </li>
+  
+    <li>
+      <article class='ListView'>
+    <header class="title">
+      
+        <h1>
           <a href="/2018/01/19/Resume/">Resume</a>
         </h1>
       
