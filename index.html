@@ -10,7 +10,7 @@
   
   <!--link rel="stylesheet" href="//cdn.jsdelivr.net/highlight.js/9.10.0/styles/github-gist.min.css"-->
   <link rel="stylesheet" href="//cdn.jsdelivr.net/highlight.js/9.10.0/styles/github-gist.min.css">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/archives/css/style.css">
 </head>
 
 <body>
@@ -50,7 +50,118 @@
     <header class="title">
       
         <h1>
-          <a href="/2016/06/07/linked-list-operations/">linked list operations</a>
+          <a href="/archives/2017/12/19/typedef-in-C/">typedef in C</a>
+        </h1>
+      
+      <div class='ListMeta'>
+  <time datetime="2017-12-19T01:19:18.000Z" itemprop="datePublished">
+    2017-12-19
+  </time>
+  
+  | 
+  <ul>
+    
+  <li class="meta-text">
+  { <a href="/archives/tags/C/">C</a> }
+  </li>
+
+
+  </ul>
+  
+  
+</div>
+
+    </header>
+    <div>
+      
+        <p>笔者对C语言只是知道简单的使用方法，并不是非常精通。近日在Redis的 server.h 文件中发现了这样的代码：</p>
+<pre><code>typedef void redisCommandProc(client *c);
+struct redisCommand {
+    char *name;
+    redisCommandProc *proc;
+    ......
+};
+</code></pre><p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
+<p>函数指针类型的别名在笔者印象中应该采用如下的方式声明：</p>
+<pre><code>typdef type (*funcptr)(args...);
+</code></pre><p>此处，假设需要声明一个函数指针，其参数为一个client指针，返回为空，那么应该如此声明：</p>
+<pre><code>typedef void (*redisCommandProc)(client *c);
+</code></pre><p>在Redis源码中的这个声明并没有显示将redisCommandProc声明成一个指针。那么这两种声明方式又有什么异同呢?于是笔者写了一个简单的测试：</p>
+<pre><code>#include &lt;stdio.h&gt;
+
+typedef void funca(char);
+typedef void (*funcb)(char);
+
+typedef struct {
+    /* Get compiler error : funca_without_pointer declared as a function*/
+    //funca funca_without_pointer;
+    funca *funca_with_reference;
+    funca *funca_without_reference;
+    funcb funcb_with_reference;
+    funcb funcb_without_reference;
+} FuncCaller;
+
+static void func(char);
+
+int main(int argc, char** argv) {
+    FuncCaller caller;
+    caller.funca_with_reference = &amp;func;
+    caller.funca_without_reference = func;
+    fprintf(stdout, &quot;funca_with_reference %p, funca_without_reference %p\n&quot;, caller.funca_with_reference,   caller.funca_without_reference);
+    fprintf(stdout, &quot;*funca_with_reference %p, *funca_without_reference %p\n&quot;,  *caller.funca_with_reference, *caller.funca_without_reference);
+
+    caller.funcb_with_reference = &amp;func;
+    caller.funcb_without_reference = func;
+    fprintf(stdout, &quot;funcb_with_reference %p, funcb_without_reference %p\n&quot;, caller.funcb_with_reference,   caller.funcb_without_reference);
+    fprintf(stdout, &quot;*funcb_with_reference %p, *funcb_without_reference %p\n&quot;,  *caller.funcb_with_reference, *caller.funcb_without_reference);
+
+    fprintf(stdout, &quot;funca\n&quot;);
+    caller.funca_with_reference(&apos;a&apos;);
+    fprintf(stdout, &quot;funcb\n&quot;);
+    caller.funcb_without_reference(&apos;b&apos;);
+
+    fprintf(stdout, &quot;funca address%p\n&quot;, &amp;caller.funca_without_reference);
+    fprintf(stdout, &quot;funcb address%p\n&quot;, &amp;caller.funcb_without_reference);
+}
+
+void func(char source) {
+    fprintf(stdout, &quot;Come from %c\n&quot;, source);
+}
+</code></pre><p>此处采用的编译器信息为：</p>
+<pre><code>Apple LLVM version 9.0.0 (clang-900.0.39.2)
+Target: x86_64-apple-darwin17.3.0
+</code></pre><p>获得了如下的输出：</p>
+<pre><code>funca_with_reference 0x104f34e40, funca_without_reference 0x104f34e40
+*funca_with_reference 0x104f34e40, *funca_without_reference     0x104f34e40
+funcb_with_reference 0x104f34e40, funcb_without_reference   0x104f34e40
+*funcb_with_reference 0x104f34e40, *funcb_without_reference     0x104f34e40
+funca
+Come from a
+funcb
+Come from b
+funca address0x7ffeeaccb948
+funcb address0x7ffeeaccb958
+</code></pre><p>根据上述结果可以看出，本质上，Redis中的声明方式：</p>
+<pre><code>typedef void redisCommandProc(client *c);
+</code></pre><p>本质上是对函数类型的一个别名，而非对函数指针的一个别名。当使用的时候，需要使用 redisCommandProc * 来声明一个指向函数的指针 ，如果遗漏了指针声明，则会变成一个函数类型，将会产生编译时的错误。</p>
+<p>对于C语言中的函数名与函数指针，本质上二者并没有差别，都是存储了指向该函数的地址。因此，以下的调用其实是一样的：</p>
+<pre><code>func(&apos;a&apos;);
+(*func)(&apos;a&apos;);
+</code></pre><p>以上可以从 C99 Specification 中的 6.3.2.1.4 获得认证：</p>
+<pre><code>a function designator with type &quot;function returning type&quot; is converted to an expression that has type &quot;pointer to function returning type&quot;
+</code></pre>
+      
+    </div>
+</article>
+
+    </li>
+  
+    <li>
+      <article class='ListView'>
+    <header class="title">
+      
+        <h1>
+          <a href="/archives/2016/06/07/linked-list-operations/">linked list operations</a>
         </h1>
       
       <div class='ListMeta'>
@@ -62,7 +173,7 @@
   <ul>
     
   <li class="meta-text">
-  { <a href="/tags/algorithm/">algorithm</a> }
+  { <a href="/archives/tags/algorithm/">algorithm</a> }
   </li>
 
 
@@ -247,7 +358,7 @@ Node* findLoopPort(Node *head)
     <header class="title">
       
         <h1>
-          <a href="/2016/03/05/用hexo快速搭建个人博客/">用hexo快速搭建个人博客</a>
+          <a href="/archives/2016/03/05/用hexo快速搭建个人博客/">用hexo快速搭建个人博客</a>
         </h1>
       
       <div class='ListMeta'>
@@ -259,7 +370,7 @@ Node* findLoopPort(Node *head)
   <ul>
     
   <li class="meta-text">
-  { <a href="/tags/hexo/">hexo</a> }
+  { <a href="/archives/tags/hexo/">hexo</a> }
   </li>
 
 
@@ -358,7 +469,7 @@ root: /
         </div>
     </div>
 </div>
-<script src="/js/pager/dist/singlepager.js"></script>
+<script src="/archives/js/pager/dist/singlepager.js"></script>
 <script>
 var sp = new Pager('data-pager-shell')
 
