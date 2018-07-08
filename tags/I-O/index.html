@@ -53,7 +53,7 @@
             <ul class="Index">
   
     <header class='PageTitle'>
-        <h1>{ C }</h1>
+        <h1>{ I/O }</h1>
     </header>
   
   
@@ -100,90 +100,6 @@
         
           <div class="more-link">
             <a href="/2018/07/08/Basic-Network-I-O-Techniques/#more">Read On »</a>
-          </div>
-        
-      
-    </div>
-</article>
-
-    </li>
-  
-    <li>
-      <article class='ListView'>
-    <header class="title">
-      
-        <h1>
-          <a href="/2018/02/02/Memory-Layout/">Memory Layout</a>
-        </h1>
-      
-      <div class='ListMeta'>
-  <time datetime="2018-02-02T01:31:22.000Z" itemprop="datePublished">
-    2018-02-02
-  </time>
-  
-  | 
-  <ul>
-    
-  <li class="meta-text">
-  { <a href="/tags/C/">C</a> }
-  </li>
-
-
-  </ul>
-  
-  
-</div>
-
-    </header>
-    <div>
-      
-        <p>今天做了一个简单的测试，简单地探究了一下GCC下的Memory Layout。</p>
-        
-          <div class="more-link">
-            <a href="/2018/02/02/Memory-Layout/#more">Read On »</a>
-          </div>
-        
-      
-    </div>
-</article>
-
-    </li>
-  
-    <li>
-      <article class='ListView'>
-    <header class="title">
-      
-        <h1>
-          <a href="/2017/12/19/typedef-in-C/">typedef in C</a>
-        </h1>
-      
-      <div class='ListMeta'>
-  <time datetime="2017-12-19T01:19:18.000Z" itemprop="datePublished">
-    2017-12-19
-  </time>
-  
-  | 
-  <ul>
-    
-  <li class="meta-text">
-  { <a href="/tags/C/">C</a> }
-  </li>
-
-
-  </ul>
-  
-  
-</div>
-
-    </header>
-    <div>
-      
-        <p>笔者对C语言只是知道简单的使用方法，并不是非常精通。近日在Redis的 server.h 文件中发现了这样的代码：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="keyword">void</span> <span class="title">redisCommandProc</span><span class="params">(client *c)</span></span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> &#123;</span></span><br><span class="line">    <span class="keyword">char</span> *name;</span><br><span class="line">    redisCommandProc *proc;</span><br><span class="line">    ......</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
-        
-          <div class="more-link">
-            <a href="/2017/12/19/typedef-in-C/#more">Read On »</a>
           </div>
         
       
