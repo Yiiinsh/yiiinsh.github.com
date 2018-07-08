@@ -35,17 +35,15 @@
               <li>Archive</li>
             </a>  
           
-            <a href="/tags/" class="Btn">
-              <li>Tags</li>
-            </a>  
-          
-            <a href="/about/" class="Btn">
-              <li>About</li>
-            </a>  
-          
         </ul>
     </section>
     <section class="media">
+        
+            
+                <a href="https://github.com/Yiiins">
+                    <img src="/assets/github.svg" />
+                </a>
+            
         
     </section>
 </aside>
@@ -85,129 +83,11 @@
     <div>
       
         <p>今天做了一个简单的测试，简单地探究了一下GCC下的Memory Layout。</p>
-<p>程序的运行环境如下：</p>
-<pre><code>Linux indy2-login0 3.10.0-327.36.3.el7.x86_64 #1 SMP Mon Oct 24 16:09:20 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
-gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11)
-</code></pre><p>程序如下：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int main(int argc, char **argv){
-  int i,j,k;
-  double d;
-  float f;
-  void *p;
-
-  struct fred {
-     int a;
-     short s;
-     double d;
-     double d2;
-     short s2;
-  }var;
-
-  double a[30][30];
-  int *pd2;
-  double *pd;
-  pd2 = (int*) malloc(sizeof(int));
-  pd = (double*)malloc(sizeof(double));
-
-  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
-  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
-  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
-  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
-  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
-  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
-
-  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
-  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
-  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
-  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
-  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
-  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
-
-  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
-  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
-  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
-}
-</code></pre><p>采用gcc编译并运行这段程序，得到了如下的结果：</p>
-<pre><code>i 4 00007fffffffdc7c
-j 4 00007fffffffdc78
-k 4 00007fffffffdc74
-d 8 00007fffffffdc68
-f 4 00007fffffffdc64
-p 8 00007fffffffdc58
-var 32 00007fffffffdc30
-var.a 4 00007fffffffdc30
-var.s 2 00007fffffffdc34
-var.d 8 00007fffffffdc38
-var.s2 2 00007fffffffdc48
-var.d2 8 00007fffffffdc40
-a 7200 00007fffffffc010
-pd 8 0000000000602030
-pd2 8 0000000000602010
-</code></pre><p>可以看到，对于一个primitive，在该测试环境下，变量在stack上由高向低分配。对于一个结构体内部，所有的变量则在结构体对应的地址空间上由低向高顺序分配。</p>
-<p>这里注意到，对于var这个由1个int，2个short，2个double组成的结构体，理论上，这个结构体应该占据24byte的空间，然而实际上var这个结构体占据了32byte。这是由于GCC下会对该程序进行一个内存对齐（alignment）。通常来说，内存总线以字（word， 4byte）为最小单位进行传输。为了避免传输的数据被截断，需要重新指向来获取数据所造成的额外的开销，GCC对这个程序进行了内存对齐的处理。变量s是一个short型变量，在该环境下占2byte。假设紧随其后的double变量d在内存上紧接着s存储，当数据传输过来时，由于以字为单位进行传输，变量d将会被截断，为了恢复变量d需要做额外的处理。因此，在此处s后面，GCC填充了2byte的占位字节，使其称为一个完整的word，而相应的d则紧随其后，在两个齐整的word下存储。这就是为什么var这个结构体使用了比理想状态下更多的空间。</p>
-<p>下面我们对于代码进行小小的调整，我们修改var所对应的结构体，将s2变量的位置提升到s之下，其余部分不变：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int main(int argc, char **argv){
-  int i,j,k;
-  double d;
-  float f;
-  void *p;
-
-  struct fred {
-     int a;
-     short s;
-     short s2;
-     double d;
-     double d2;
-  }var;
-
-  double a[30][30];
-  int *pd2;
-  double *pd;
-  pd2 = (int*) malloc(sizeof(int));
-  pd = (double*)malloc(sizeof(double));
-
-  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
-  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
-  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
-  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
-  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
-  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
-
-  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
-  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
-  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
-  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
-  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
-  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
-
-  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
-  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
-  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
-}
-</code></pre><p>然后编译执行程序，我们得到的如下的结果：</p>
-<pre><code>i 4 00007fffffffdc7c
-j 4 00007fffffffdc78
-k 4 00007fffffffdc74
-d 8 00007fffffffdc68
-f 4 00007fffffffdc64
-p 8 00007fffffffdc58
-var 24 00007fffffffdc40
-var.a 4 00007fffffffdc40
-var.s 2 00007fffffffdc44
-var.d 8 00007fffffffdc48
-var.s2 2 00007fffffffdc46
-var.d2 8 00007fffffffdc50
-a 7200 00007fffffffc020
-pd 8 0000000000602030
-pd2 8 0000000000602010
-</code></pre><p>此处我们看到，结构体对象var与我们预想的一样，占用了24byte的空间。这是因为简单的重排，使两个short变量s与s1正好占据一个word，避免了各自的对齐从而减少了空间的开销。由此可见，对于C语言中的结构体，在GCC下所有的成员变量会以对应的顺序进行存储，对于无法整齐排列在内存中的变量，会进行内存对齐，通过填充空的占位字节使其占据完整的一个word。通过对于变量顺序的调整，可以减少程序中的内存的使用！</p>
-
+        
+          <div class="more-link">
+            <a href="/2018/02/02/Memory-Layout/#more">Read On »</a>
+          </div>
+        
       
     </div>
 </article>
@@ -243,61 +123,12 @@ pd2 8 0000000000602010
     </header>
     <div>
       
-        <h2 id="个人信息"><a href="#个人信息" class="headerlink" title="个人信息"></a>个人信息</h2><p>姓名 ：鄞劭涵</p>
-<p>性别 ：男</p>
-<p>出生年月 ：1995.2</p>
-<p>Email: <a href="mailto:shaohan.yin@gmail.com" target="_blank" rel="noopener">shaohan.yin@gmail.com</a></p>
-<p>GitHub ：<a href="https://github.com/Yiiinsh" target="_blank" rel="noopener">https://github.com/Yiiinsh</a></p>
-<p>Blog ： <a href="http://yiiinsh.github.io" target="_blank" rel="noopener">http://yiiinsh.github.io</a></p>
-<p>自我描述 : 具有快速学习新知识并应用的能力 ； 能通过阅读官方英文技术文档来解决开发过程中面临的问题 ； 善于利用Google、stackoverflow等搜索所需知识并解决遇到的问题 ；对学习新技术具有较大的热情</p>
-<h2 id="教育经历"><a href="#教育经历" class="headerlink" title="教育经历"></a>教育经历</h2><ul>
-<li>硕士 ：爱丁堡大学（2017.9 - 2018.8)    <ul>
-<li>专业 ： 高性能计算</li>
-</ul>
-</li>
-<li>本科 ：同济大学软件学院（2013.9 － 2017.7）<ul>
-<li>专业 ： 软件工程</li>
-<li>在校成绩（GPA) ：4.65 / 5 (排名前5%)</li>
-<li>活动荣誉 ：<ul>
-<li>同济大学2013－2014学年奖学金一等奖</li>
-<li>同济大学2014－2015学年奖学金二等奖</li>
-<li>同济大学2015－2016学年奖学金三等奖</li>
-<li>2015年华为软件精英挑战赛上海赛区64强</li>
-<li>同济大学-韩国庆北大学合作项目</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="实习经历"><a href="#实习经历" class="headerlink" title="实习经历"></a>实习经历</h2><ul>
-<li>携程旅行网 (2016.7-2017.1)<ul>
-<li>部门 : 携程旅行网框架研发部</li>
-<li>职位 : 软件工程师</li>
-<li>描述 ：参与携程旅行网框架研发部开源Redis跨数据中心解决方案X-Pipe的设计与研发。主要负责Console模块设计与开发</li>
-</ul>
-</li>
-</ul>
-<h2 id="项目信息"><a href="#项目信息" class="headerlink" title="项目信息"></a>项目信息</h2><h3 id="X-Pipe-Redis跨数据中心解决方案"><a href="#X-Pipe-Redis跨数据中心解决方案" class="headerlink" title="X-Pipe - Redis跨数据中心解决方案"></a>X-Pipe - Redis跨数据中心解决方案</h3><p>项目地址 ：<a href="https://github.com/ctripcorp/x-pipe" target="_blank" rel="noopener">https://github.com/ctripcorp/x-pipe</a></p>
-<p>项目描述 : X-Pipe是由携程框架部门研发的Redis多数据中心复制管理系统。基于Redis的Master-Slave复制协议，实现低延时、高可用的Redis多数据中心复制，并且提供一键机房切换，复制监控、异常报警等功能。</p>
-<p>主要职责 : 这个项目中，本人主要负责的是X-Pipe Console模块的开发。 Console模块提供了X-Pipe系统的Web端控制台，实现了Redis集群的配置与更改与异常监控报警。同时完成了主机房迁移流程控制，提供了自动流程执行、失败事务回滚等功能。</p>
-<h2 id="技术信息"><a href="#技术信息" class="headerlink" title="技术信息"></a>技术信息</h2><ul>
-<li>语言: Java</li>
-<li>Redis: 熟悉 Redis Replication &amp; Persistence</li>
-<li>Web : 有SpringBoot， Angular使用经验</li>
-<li>Git : 熟练使用Git，遵循团队管理策略</li>
-<li>HPC : 了解 OpenMP， MPI 的并行思想及使用</li>
-<li>其他 : 了解常用的数据结构、算法， 了解基本的网络知识</li>
-</ul>
-<h2 id="其它信息"><a href="#其它信息" class="headerlink" title="其它信息"></a>其它信息</h2><ul>
-<li>英语水平 :<ul>
-<li>CET6 : 532</li>
-<li>IELTS : 7</li>
-<li>个人描述 ：能够流利完成的日常交流 ；能够阅读英文官方技术文档以及文章</li>
-</ul>
-</li>
-</ul>
-<h2 id="致谢"><a href="#致谢" class="headerlink" title="致谢"></a>致谢</h2><p>感谢您花时间阅读我的简历，期待能够得到同您面谈的机会</p>
-
+        <h2 id="个人信息"><a href="#个人信息" class="headerlink" title="个人信息"></a>个人信息</h2>
+        
+          <div class="more-link">
+            <a href="/2018/01/19/Resume/#more">Read On »</a>
+          </div>
+        
       
     </div>
 </article>
@@ -334,81 +165,13 @@ pd2 8 0000000000602010
     <div>
       
         <p>笔者对C语言只是知道简单的使用方法，并不是非常精通。近日在Redis的 server.h 文件中发现了这样的代码：</p>
-<pre><code>typedef void redisCommandProc(client *c);
-struct redisCommand {
-    char *name;
-    redisCommandProc *proc;
-    ......
-};
-</code></pre><p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
-<p>函数指针类型的别名在笔者印象中应该采用如下的方式声明：</p>
-<pre><code>typdef type (*funcptr)(args...);
-</code></pre><p>此处，假设需要声明一个函数指针，其参数为一个client指针，返回为空，那么应该如此声明：</p>
-<pre><code>typedef void (*redisCommandProc)(client *c);
-</code></pre><p>在Redis源码中的这个声明并没有显示将redisCommandProc声明成一个指针。那么这两种声明方式又有什么异同呢?于是笔者写了一个简单的测试：</p>
-<pre><code>#include &lt;stdio.h&gt;
-
-typedef void funca(char);
-typedef void (*funcb)(char);
-
-typedef struct {
-    /* Get compiler error : funca_without_pointer declared as a function*/
-    //funca funca_without_pointer;
-    funca *funca_with_reference;
-    funca *funca_without_reference;
-    funcb funcb_with_reference;
-    funcb funcb_without_reference;
-} FuncCaller;
-
-static void func(char);
-
-int main(int argc, char** argv) {
-    FuncCaller caller;
-    caller.funca_with_reference = &amp;func;
-    caller.funca_without_reference = func;
-    fprintf(stdout, &quot;funca_with_reference %p, funca_without_reference %p\n&quot;, caller.funca_with_reference,   caller.funca_without_reference);
-    fprintf(stdout, &quot;*funca_with_reference %p, *funca_without_reference %p\n&quot;,  *caller.funca_with_reference, *caller.funca_without_reference);
-
-    caller.funcb_with_reference = &amp;func;
-    caller.funcb_without_reference = func;
-    fprintf(stdout, &quot;funcb_with_reference %p, funcb_without_reference %p\n&quot;, caller.funcb_with_reference,   caller.funcb_without_reference);
-    fprintf(stdout, &quot;*funcb_with_reference %p, *funcb_without_reference %p\n&quot;,  *caller.funcb_with_reference, *caller.funcb_without_reference);
-
-    fprintf(stdout, &quot;funca\n&quot;);
-    caller.funca_with_reference(&apos;a&apos;);
-    fprintf(stdout, &quot;funcb\n&quot;);
-    caller.funcb_without_reference(&apos;b&apos;);
-
-    fprintf(stdout, &quot;funca address%p\n&quot;, &amp;caller.funca_without_reference);
-    fprintf(stdout, &quot;funcb address%p\n&quot;, &amp;caller.funcb_without_reference);
-}
-
-void func(char source) {
-    fprintf(stdout, &quot;Come from %c\n&quot;, source);
-}
-</code></pre><p>此处采用的编译器信息为：</p>
-<pre><code>Apple LLVM version 9.0.0 (clang-900.0.39.2)
-Target: x86_64-apple-darwin17.3.0
-</code></pre><p>获得了如下的输出：</p>
-<pre><code>funca_with_reference 0x104f34e40, funca_without_reference 0x104f34e40
-*funca_with_reference 0x104f34e40, *funca_without_reference     0x104f34e40
-funcb_with_reference 0x104f34e40, funcb_without_reference   0x104f34e40
-*funcb_with_reference 0x104f34e40, *funcb_without_reference     0x104f34e40
-funca
-Come from a
-funcb
-Come from b
-funca address0x7ffeeaccb948
-funcb address0x7ffeeaccb958
-</code></pre><p>根据上述结果可以看出，本质上，Redis中的声明方式：</p>
-<pre><code>typedef void redisCommandProc(client *c);
-</code></pre><p>本质上是对函数类型的一个别名，而非对函数指针的一个别名。当使用的时候，需要使用 redisCommandProc * 来声明一个指向函数的指针 ，如果遗漏了指针声明，则会变成一个函数类型，将会产生编译时的错误。</p>
-<p>对于C语言中的函数名与函数指针，本质上二者并没有差别，都是存储了指向该函数的地址。因此，以下的调用其实是一样的：</p>
-<pre><code>func(&apos;a&apos;);
-(*func)(&apos;a&apos;);
-</code></pre><p>以上可以从 C99 Specification 中的 6.3.2.1.4 获得认证：</p>
-<pre><code>a function designator with type &quot;function returning type&quot; is converted to an expression that has type &quot;pointer to function returning type&quot;
-</code></pre>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="keyword">void</span> <span class="title">redisCommandProc</span><span class="params">(client *c)</span></span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> &#123;</span></span><br><span class="line">    <span class="keyword">char</span> *name;</span><br><span class="line">    redisCommandProc *proc;</span><br><span class="line">    ......</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
+        
+          <div class="more-link">
+            <a href="/2017/12/19/typedef-in-C/#more">Read On »</a>
+          </div>
+        
       
     </div>
 </article>
@@ -445,167 +208,11 @@ funcb address0x7ffeeaccb958
     <div>
       
         <h2 id="链表操作"><a href="#链表操作" class="headerlink" title="链表操作"></a>链表操作</h2><p>一些有趣的链表问题及解决方法～</p>
-<p>本文中用到的链表节点的定义：</p>
-<pre><code>struct Node{
-    int data;
-    Node* next;
-};
-</code></pre><h2 id="在O-1-时间删除链表节点"><a href="#在O-1-时间删除链表节点" class="headerlink" title="在O(1)时间删除链表节点"></a>在O(1)时间删除链表节点</h2><p>题目描述：给定链表的头指针和一个节点指针，在O(1)时间删除该节点。</p>
-<p>分析：本题与《编程之美》上的「从无头单链表中删除节点」类似。主要思想都是「狸猫换太子」，即用下一个节点数据覆盖要删除的节点，然后删除下一个节点。但是如果节点是尾节点时，该方法就行不通了。</p>
-<p>代码如下：</p>
-<pre><code>//O(1)时间删除链表节点，从无头单链表中删除节点
-void deleteRandomNode(Node *cur)
-{
-    assert(cur != NULL);
-    assert(cur-&gt;next != NULL);    //不能是尾节点
-    Node* pNext = cur-&gt;next;
-    cur-&gt;data = pNext-&gt;data;
-    cur-&gt;next = pNext-&gt;next;
-    delete pNext;
-}
-</code></pre><h2 id="单链表的转置"><a href="#单链表的转置" class="headerlink" title="单链表的转置"></a>单链表的转置</h2><p>题目描述：输入一个单向链表，输出逆序反转后的链表</p>
-<p>分析：链表的转置是一个很常见、很基础的数据结构题了，非递归的算法很简单，用三个临时指针 pre、head、next 在链表上循环一遍即可。递归算法也是比较简单的，但是如果思路不清晰估计一时半会儿也写不出来吧。</p>
-<p>下面是循环版本和递归版本的链表转置代码：</p>
-<pre><code>//单链表的转置,循环方法
-Node* reverseByLoop(Node *head)
-{
-    if(head == NULL || head-&gt;next == NULL)
-        return head;
-    Node *pre = NULL;
-    Node *next = NULL;
-    while(head != NULL)
-    {
-        next = head-&gt;next;
-        head-&gt;next = pre;
-        pre = head;
-        head = next;
-    }
-    return pre;
-}
-
-//单链表的转置,递归方法
-Node* reverseByRecursion(Node *head)
-{
-    //第一个条件是判断异常，第二个条件是结束判断
-    if(head == NULL || head-&gt;next == NULL) 
-        return head;
-
-    Node *newHead = reverseByRecursion(head-&gt;next);
-
-    head-&gt;next-&gt;next = head;
-    head-&gt;next = NULL;
-
-    return newHead;    //返回新链表的头指针
-}
-</code></pre><h2 id="求链表的倒数第k个节点"><a href="#求链表的倒数第k个节点" class="headerlink" title="求链表的倒数第k个节点"></a>求链表的倒数第k个节点</h2><p>题目描述：输入一个单向链表，输出该链表中倒数第k个节点，链表的倒数第0个节点为链表的尾指针。</p>
-<p>分析：设置两个指针 p1、p2，首先 p1 和 p2 都指向 head，然后 p2 向前走 k 步，这样 p1 和 p2 之间就间隔 k 个节点，最后 p1 和 p2 同时向前移动，直至 p2 走到链表末尾。</p>
-<p>代码如下：</p>
-<pre><code>//倒数第k个节点
-Node* theKthNode(Node *head,int k)
-{
-    if(k &lt; 0) return NULL;    //异常判断
-
-    Node *slow,*fast;
-    slow = fast = head;
-    int i = k;
-    for(;i&gt;0 &amp;&amp; fast!=NULL;i--)
-    {
-        fast = fast-&gt;next;
-    }
-
-    if(i &gt; 0)    return NULL;    //考虑k大于链表长度的case
-
-    while(fast != NULL)
-    {
-        slow = slow-&gt;next;
-        fast = fast-&gt;next;
-    }
-
-    return slow;
-}
-</code></pre><h2 id="求链表的中间节点"><a href="#求链表的中间节点" class="headerlink" title="求链表的中间节点"></a>求链表的中间节点</h2><p>题目描述：求链表的中间节点，如果链表的长度为偶数，返回中间两个节点的任意一个，若为奇数，则返回中间节点。</p>
-<p>分析：此题的解决思路和第3题「求链表的倒数第 k 个节点」很相似。可以先求链表的长度，然后计算出中间节点所在链表顺序的位置。但是如果要求只能扫描一遍链表，如何解决呢？最高效的解法和第3题一样，通过两个指针来完成。用两个指针从链表头节点开始，一个指针每次向后移动两步，一个每次移动一步，直到快指针移到到尾节点，那么慢指针即是所求。</p>
-<pre><code>//求链表的中间节点
-Node* theMiddleNode(Node *head)
-{
-    if(head == NULL)
-        return NULL;
-    Node *slow,*fast;
-    slow = fast = head;
-    //如果要求在链表长度为偶数的情况下，返回中间两个节点的第一个，可以用下面的循环条件
-    //while(fast &amp;&amp; fast-&gt;next != NULL &amp;&amp; fast-&gt;next-&gt;next != NULL)  
-    while(fast != NULL &amp;&amp; fast-&gt;next != NULL)
-    {
-        fast = fast-&gt;next-&gt;next;
-        slow = slow-&gt;next;
-    }
-    return slow;
-}
-</code></pre><h2 id="判断单链表是否存在环"><a href="#判断单链表是否存在环" class="headerlink" title="判断单链表是否存在环"></a>判断单链表是否存在环</h2><p>题目描述：输入一个单向链表，判断链表是否有环？</p>
-<p>分析：通过两个指针，分别从链表的头节点出发，一个每次向后移动一步，另一个移动两步，两个指针移动速度不一样，如果存在环，那么两个指针一定会在环里相遇。</p>
-<p>代码如下：</p>
-<pre><code>//判断单链表是否存在环,参数circleNode是环内节点，后面的题目会用到
-bool hasCircle(Node *head,Node *&amp;circleNode)
-{
-    Node *slow,*fast;
-    slow = fast = head;
-    while(fast != NULL &amp;&amp; fast-&gt;next != NULL)
-    {
-        fast = fast-&gt;next-&gt;next;
-        slow = slow-&gt;next;
-        if(fast == slow)
-        {
-            circleNode = fast;
-            return true;
-        }
-    }
-
-    return false;
-}
-</code></pre><h2 id="找到环的入口点"><a href="#找到环的入口点" class="headerlink" title="找到环的入口点"></a>找到环的入口点</h2><p>题目描述：输入一个单向链表，判断链表是否有环。如果链表存在环，如何找到环的入口点？</p>
-<p>解题思路： 由上题可知，按照 p2 每次两步，p1 每次一步的方式走，发现 p2 和 p1 重合，确定了单向链表有环路了。接下来，让p2回到链表的头部，重新走，每次步长不是走2了，而是走1，那么当 p1 和 p2 再次相遇的时候，就是环路的入口了。</p>
-<p>为什么？：假定起点到环入口点的距离为 a，p1 和 p2 的相交点M与环入口点的距离为b，环路的周长为L，当 p1 和 p2 第一次相遇的时候，假定 p1 走了 n 步。那么有：</p>
-<p>p1走的路径： a+b ＝ n；<br>p2走的路径： a+b+kL = 2n； p2 比 p1 多走了k圈环路，总路程是p1的2倍</p>
-<p>根据上述公式可以得到 k*L=a+b=n显然，如果从相遇点M开始，p1 再走 n 步的话，还可以再回到相遇点，同时p2从头开始走的话，经过n步，也会达到相遇点M。</p>
-<p>显然在这个步骤当中 p1 和 p2 只有前 a 步走的路径不同，所以当 p1 和 p2 再次重合的时候，必然是在链表的环路入口点上。</p>
-<p>代码如下：</p>
-<pre><code>//找到环的入口点
-Node* findLoopPort(Node *head)
-{
-    //如果head为空，或者为单结点，则不存在环
-    if(head == NULL || head-&gt;next == NULL) return NULL;
-
-    Node *slow,*fast;
-    slow = fast = head;
-
-    //先判断是否存在环
-    while(fast != NULL &amp;&amp; fast-&gt;next != NULL)
-    {
-        fast = fast-&gt;next-&gt;next;
-        slow = slow-&gt;next;
-        if(fast == slow)
-            break;
-    }
-
-    if(fast != slow) return NULL;    //不存在环
-
-    fast = head;                //快指针从头开始走，步长变为1
-    while(fast != slow)            //两者相遇即为入口点
-    {
-        fast = fast-&gt;next;
-        slow = slow-&gt;next;
-    }
-
-    return fast;
-}
-</code></pre><h2 id="判断链表是否相交"><a href="#判断链表是否相交" class="headerlink" title="判断链表是否相交"></a>判断链表是否相交</h2><p>题目描述：给出两个单向链表的头指针，比如h1、h2，判断这两个链表是否相交。这里为了简化问题，我们假设两个链表均不带环。</p>
-<p>解题思路：</p>
-<p>直接循环判断第一个链表的每个节点是否在第二个链表中。但，这种方法的时间复杂度为O(Length(h1) * Length(h2))。显然，我们得找到一种更为有效的方法，至少不能是O（N^2）的复杂度。</p>
-<p>针对第一个链表直接构造hash表，然后查询hash表，判断第二个链表的每个节点是否在hash表出现，如果所有的第二个链表的节点都能在hash表中找到，即说明第二个链表与第一个链表有相同的节点。时间复杂度为为线性：O(Length(h1) + Length(h2))，同时为了存储第一个链表的所有节点，空间复杂度为O(Length(h1))。是否还有更好的方法呢，既能够以线性时间复杂度解决问题，又能减少存储空间？</p>
-<p>转换为环的问题。把第二个链表接在第一个链表后面，如果得到的链表有环，则说明两个链表相交。如何判断有环的问题上面已经讨论过了，但这里有更简单的方法。因为如果有环，则第二个链表的表头一定也在环上，即第二个链表会构成一个循环链表，我们只需要遍历第二个链表，看是否会回到起始点就可以判断出来。这个方法的时间复杂度是线性的，空间是常熟。</p>
-<p>进一步考虑“如果两个没有环的链表相交于某一节点，那么在这个节点之后的所有节点都是两个链表共有的”这个特点，我们可以知道，如果它们相交，则最后一个节点一定是共有的。而我们很容易能得到链表的最后一个节点，所以这成了我们简化解法的一个主要突破口。那么，我们只要判断两个链表的尾指针是否相等。相等，则链表相交；否则，链表不相交。<br>所以，先遍历第一个链表，记住最后一个节点。然后遍历第二个链表，到最后一个节点时和第一个链表的最后一个节点做比较，如果相同，则相交，否则，不相交。这样我们就得到了一个时间复杂度，它为O((Length(h1) + Length(h2))，而且只用了一个额外的指针来存储最后一个节点。这个方法时间复杂度为线性O(N)，空间复杂度为O(1)，显然比解法三更胜一筹。</p>
-<p>解法源<br>参考自<a href="http://wuchong.me/blog/2014/03/25/interview-link-questions/" target="_blank" rel="noopener">Jark’s Blog</a></p>
-
+        
+          <div class="more-link">
+            <a href="/2016/06/07/linked-list-operations/#more">Read On »</a>
+          </div>
+        
       
     </div>
 </article>
@@ -644,65 +251,11 @@ Node* findLoopPort(Node *head)
         <h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>如果你跟我一样，想要开辟出一块自留地来记录自己在技术学习过程中的各种收获，却又懒于搭建个人博客的繁琐，也对各种免费空间无爱，那么我相信Hexo会是一个不错的选择。</p>
 <p>Hexo是一个快速、简洁且高效的博客框架，并且可以支持使用Markdown来解析文章。对于“颜控”，还有各种各样的主题可供使用。同时，Hexo搭建的博客还可以部署在github上，免去了自己购买空间的花费，又能获得无限的空间。</p>
 <p>本文主要介绍作者在使用Hexo时的实践心得。关于更加深入的内容，可以查阅Hexo官方的文档以求得更详尽的解答。</p>
-<h2 id="Hexo安装"><a href="#Hexo安装" class="headerlink" title="Hexo安装"></a>Hexo安装</h2><p>作者使用的是Mac系统，对于其他系统的用户可以查阅官方文档了解相关的安装过程。</p>
-<p>安装Hexo之前，你的电脑中需要有：</p>
-<ul>
-<li>Node.js</li>
-<li>Git</li>
-</ul>
-<h3 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h3><p>关于git的安装，在Mac系统中推荐使用Homebrew进行安装。</p>
-<pre><code>sudo brew install git
-</code></pre><h3 id="安装Node-js"><a href="#安装Node-js" class="headerlink" title="安装Node.js"></a>安装Node.js</h3><p>安装node.js的最佳方式是安装nvm.这也可以直接通过Homebrew进行安装。</p>
-<pre><code>sudo brew install nvm
-</code></pre><h3 id="安装Hexo"><a href="#安装Hexo" class="headerlink" title="安装Hexo"></a>安装Hexo</h3><p>所有必要的程序安装完毕后，就可以直接使用npm来安装hexo了。</p>
-<pre><code>sudo npm install -g hexo-cli
-</code></pre><h2 id="Hexo使用"><a href="#Hexo使用" class="headerlink" title="Hexo使用"></a>Hexo使用</h2><h3 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h3><p>在使用hexo之前，自然应该先初始化一系列相关的文件。首先，在终端中cd到打算存储该博客相关内容的文件夹中，然后通过一下命令对站点进行初始化。</p>
-<pre><code>cd &lt;folder&gt;
-hexo init
-npm install
-</code></pre><p>执行完上述命令后，Hexo会生成相关的目录以及文件。整个目录的格式如下：</p>
-<pre><code>.
-├── _config.yml
-├── package.json
-├── scaffolds
-├── source
-|   ├── _drafts
-|   └── _posts
-└── themes
-</code></pre><p>其中，_config.yml中包含了建站相关的一系列配置。package.json定义了一系列依赖的信息。scaffolds包涵了模版文件，当你创建一个新的文章的时候，hexo会调用scaffolds中的相应的模版（默认为post)来建立新的文件。sources存放了用户的资源。其中_post中包含了用户所发表的文章，_drafts中包含的是用户声明使用drafts模版生成的草稿文件。themes文件夹，顾名思义，存储了一系列相关的主题文件，可以通过修改_config.yml中的配置来更换文件，也可以去Hexo官网的主题分支来选取最中意的主题。</p>
-<h3 id="常用指令"><a href="#常用指令" class="headerlink" title="常用指令"></a>常用指令</h3><p>当你完成hexo文件的初始化以后，就可以通过一系列相应的指令来完成各种功能了。</p>
-<h4 id="创建新的文件"><a href="#创建新的文件" class="headerlink" title="创建新的文件"></a>创建新的文件</h4><pre><code>hexo new [layout] &lt;title&gt;
-</code></pre><p>这条指令也可以使用简写:</p>
-<pre><code>hexo n
-</code></pre><p>其中[layout]的默认布局为post，这点可以在_config.yml中进行修改。\为用户文章的标题。生成的新文章将会被存储在source/_posts中，通过修改相关文件的内容来完成文章的编写。</p>
-<h4 id="生成网站相关的静态文件"><a href="#生成网站相关的静态文件" class="headerlink" title="生成网站相关的静态文件"></a>生成网站相关的静态文件</h4><pre><code>hexo generate [-d]
-</code></pre><p>这个指令会生成相关的静态文件。选项－d可以在生成静态文件的同时进行部署。</p>
-<h4 id="发表草稿"><a href="#发表草稿" class="headerlink" title="发表草稿"></a>发表草稿</h4><pre><code>hexo publish [layout] &lt;filename&gt;
-</code></pre><h4 id="启动调试服务器"><a href="#启动调试服务器" class="headerlink" title="启动调试服务器"></a>启动调试服务器</h4><pre><code>hexo server [-p]
-</code></pre><p>默认情况下，启动服务器后可以通过 <a href="http://localhost:4000" target="_blank" rel="noopener">http://localhost:4000</a> 对网站进行访问。选项-p可以对服务端口进行自定义。</p>
-<h4 id="部署网站"><a href="#部署网站" class="headerlink" title="部署网站"></a>部署网站</h4><pre><code>hexo deploy [-g]
-</code></pre><p>这条指令也可以用简写：</p>
-<pre><code>hexo d
-</code></pre><p>这条指令将会对网站进行部署。选项-g可以在部署之前生成相应的静态文件，即完成了generate的功能。</p>
-<h4 id="整体流程"><a href="#整体流程" class="headerlink" title="整体流程"></a>整体流程</h4><p>对于整体的一个发布文章的流程，通常是：</p>
-<pre><code>hexo new &lt;title&gt;  #生成一个新的文件
-</code></pre><p>在完成对文章的编写后，生成并部署：</p>
-<pre><code>hexo deploy -g    #生成静态文件并部署
-</code></pre><p>之后你就可以在自己的站点上看到相应的文章了。</p>
-<h2 id="将页面部署到Github"><a href="#将页面部署到Github" class="headerlink" title="将页面部署到Github"></a>将页面部署到Github</h2><p>首先安装hexo-deployer-git</p>
-<pre><code>npm install hexo-deployer-git --save
-</code></pre><p>然后修改_config.yml中的相应的配置：</p>
-<pre><code>deploy：
-    type: git
-    repo: &lt;repository url&gt;
-</code></pre><p>我们可以将页面部署到github上，并通过.github.com或者.github.io进行访问。在这之前，首先你要有个github账号，并且设置好本机git与github。详见<a href="https://help.github.com/articles/set-up-git/" target="_blank" rel="noopener">这里</a>。</p>
-<p>账号设置完成之后，在github.com页面登录，之后点击右边栏的New Repository创建一个新的repository，这里要注意的是：创建的repository的名字要与用户名一致。比如你的用户名为user1,就创建一个user1.github.com的repository.之后把存有hexo相关文件的文件夹同步到你的github中。</p>
-<p>最后，修改_config.yml中的相应配置:</p>
-<pre><code># URL
-url: http://&lt;your-user-name&gt;.github.com
-root: /
-</code></pre><p>之后就可以在.github.com或者.github.io中访问你的个人博客了。每次根据前述的流程写完文章并部署后，访问该页面就能看到相应的同步的博客了！</p>
-
+        
+          <div class="more-link">
+            <a href="/2016/03/05/用hexo快速搭建个人博客/#more">Read On »</a>
+          </div>
+        
       
     </div>
 </article>

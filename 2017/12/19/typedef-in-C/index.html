@@ -35,17 +35,15 @@
               <li>Archive</li>
             </a>  
           
-            <a href="/tags/" class="Btn">
-              <li>Tags</li>
-            </a>  
-          
-            <a href="/about/" class="Btn">
-              <li>About</li>
-            </a>  
-          
         </ul>
     </section>
     <section class="media">
+        
+            
+                <a href="https://github.com/Yiiins">
+                    <img src="/assets/github.svg" />
+                </a>
+            
         
     </section>
 </aside>
@@ -60,81 +58,29 @@
 
     <section>
       <p>笔者对C语言只是知道简单的使用方法，并不是非常精通。近日在Redis的 server.h 文件中发现了这样的代码：</p>
-<pre><code>typedef void redisCommandProc(client *c);
-struct redisCommand {
-    char *name;
-    redisCommandProc *proc;
-    ......
-};
-</code></pre><p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="keyword">void</span> <span class="title">redisCommandProc</span><span class="params">(client *c)</span></span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> &#123;</span></span><br><span class="line">    <span class="keyword">char</span> *name;</span><br><span class="line">    redisCommandProc *proc;</span><br><span class="line">    ......</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>对于此处的 typedef 语句感到较为迷惑。就以前所知，C语言中的 typedef 就是用于创建一个数据类型的别名的关键字。此处的 typedef 语句应该是一个函数指针类型的别名. 而在结构体redisCommand中的 proc成员应该就是一个指向函数的指针，该函数接受一个client指针作为参数，返回为空。</p>
+<a id="more"></a>
 <p>函数指针类型的别名在笔者印象中应该采用如下的方式声明：</p>
-<pre><code>typdef type (*funcptr)(args...);
-</code></pre><p>此处，假设需要声明一个函数指针，其参数为一个client指针，返回为空，那么应该如此声明：</p>
-<pre><code>typedef void (*redisCommandProc)(client *c);
-</code></pre><p>在Redis源码中的这个声明并没有显示将redisCommandProc声明成一个指针。那么这两种声明方式又有什么异同呢?于是笔者写了一个简单的测试：</p>
-<pre><code>#include &lt;stdio.h&gt;
-
-typedef void funca(char);
-typedef void (*funcb)(char);
-
-typedef struct {
-    /* Get compiler error : funca_without_pointer declared as a function*/
-    //funca funca_without_pointer;
-    funca *funca_with_reference;
-    funca *funca_without_reference;
-    funcb funcb_with_reference;
-    funcb funcb_without_reference;
-} FuncCaller;
-
-static void func(char);
-
-int main(int argc, char** argv) {
-    FuncCaller caller;
-    caller.funca_with_reference = &amp;func;
-    caller.funca_without_reference = func;
-    fprintf(stdout, &quot;funca_with_reference %p, funca_without_reference %p\n&quot;, caller.funca_with_reference,   caller.funca_without_reference);
-    fprintf(stdout, &quot;*funca_with_reference %p, *funca_without_reference %p\n&quot;,  *caller.funca_with_reference, *caller.funca_without_reference);
-
-    caller.funcb_with_reference = &amp;func;
-    caller.funcb_without_reference = func;
-    fprintf(stdout, &quot;funcb_with_reference %p, funcb_without_reference %p\n&quot;, caller.funcb_with_reference,   caller.funcb_without_reference);
-    fprintf(stdout, &quot;*funcb_with_reference %p, *funcb_without_reference %p\n&quot;,  *caller.funcb_with_reference, *caller.funcb_without_reference);
-
-    fprintf(stdout, &quot;funca\n&quot;);
-    caller.funca_with_reference(&apos;a&apos;);
-    fprintf(stdout, &quot;funcb\n&quot;);
-    caller.funcb_without_reference(&apos;b&apos;);
-
-    fprintf(stdout, &quot;funca address%p\n&quot;, &amp;caller.funca_without_reference);
-    fprintf(stdout, &quot;funcb address%p\n&quot;, &amp;caller.funcb_without_reference);
-}
-
-void func(char source) {
-    fprintf(stdout, &quot;Come from %c\n&quot;, source);
-}
-</code></pre><p>此处采用的编译器信息为：</p>
-<pre><code>Apple LLVM version 9.0.0 (clang-900.0.39.2)
-Target: x86_64-apple-darwin17.3.0
-</code></pre><p>获得了如下的输出：</p>
-<pre><code>funca_with_reference 0x104f34e40, funca_without_reference 0x104f34e40
-*funca_with_reference 0x104f34e40, *funca_without_reference     0x104f34e40
-funcb_with_reference 0x104f34e40, funcb_without_reference   0x104f34e40
-*funcb_with_reference 0x104f34e40, *funcb_without_reference     0x104f34e40
-funca
-Come from a
-funcb
-Come from b
-funca address0x7ffeeaccb948
-funcb address0x7ffeeaccb958
-</code></pre><p>根据上述结果可以看出，本质上，Redis中的声明方式：</p>
-<pre><code>typedef void redisCommandProc(client *c);
-</code></pre><p>本质上是对函数类型的一个别名，而非对函数指针的一个别名。当使用的时候，需要使用 redisCommandProc * 来声明一个指向函数的指针 ，如果遗漏了指针声明，则会变成一个函数类型，将会产生编译时的错误。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">typdef <span class="title">type</span> <span class="params">(*funcptr)</span><span class="params">(args...)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>此处，假设需要声明一个函数指针，其参数为一个client指针，返回为空，那么应该如此声明：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="title">void</span> <span class="params">(*redisCommandProc)</span><span class="params">(client *c)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>在Redis源码中的这个声明并没有显示将redisCommandProc声明成一个指针。那么这两种声明方式又有什么异同呢?于是笔者写了一个简单的测试：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="keyword">void</span> <span class="title">funca</span><span class="params">(<span class="keyword">char</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="title">void</span> <span class="params">(*funcb)</span><span class="params">(<span class="keyword">char</span>)</span></span>;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Get compiler error : funca_without_pointer declared as a function*/</span></span><br><span class="line">    <span class="comment">//funca funca_without_pointer;</span></span><br><span class="line">    funca *funca_with_reference;</span><br><span class="line">    funca *funca_without_reference;</span><br><span class="line">    funcb funcb_with_reference;</span><br><span class="line">    funcb funcb_without_reference;</span><br><span class="line">&#125; FuncCaller;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">func</span><span class="params">(<span class="keyword">char</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span>** argv)</span> </span>&#123;</span><br><span class="line">    FuncCaller caller;</span><br><span class="line">    caller.funca_with_reference = &amp;func;</span><br><span class="line">    caller.funca_without_reference = func;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funca_with_reference %p, funca_without_reference %p\n"</span>, caller.funca_with_reference,   caller.funca_without_reference);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"*funca_with_reference %p, *funca_without_reference %p\n"</span>,  *caller.funca_with_reference, *caller.funca_without_reference);</span><br><span class="line">    caller.funcb_with_reference = &amp;func;</span><br><span class="line">    caller.funcb_without_reference = func;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funcb_with_reference %p, funcb_without_reference %p\n"</span>, caller.funcb_with_reference,   caller.funcb_without_reference);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"*funcb_with_reference %p, *funcb_without_reference %p\n"</span>,  *caller.funcb_with_reference, *caller.funcb_without_reference);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funca\n"</span>);</span><br><span class="line">    caller.funca_with_reference(<span class="string">'a'</span>);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funcb\n"</span>);</span><br><span class="line">    caller.funcb_without_reference(<span class="string">'b'</span>);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funca address%p\n"</span>, &amp;caller.funca_without_reference);</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"funcb address%p\n"</span>, &amp;caller.funcb_without_reference);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func</span><span class="params">(<span class="keyword">char</span> source)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"Come from %c\n"</span>, source);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>此处采用的编译器信息为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Apple LLVM version 9.0.0 (clang-900.0.39.2)</span><br><span class="line">Target: x86_64-apple-darwin17.3.0</span><br></pre></td></tr></table></figure>
+<p>获得了如下的输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">funca_with_reference 0x104f34e40, funca_without_reference 0x104f34e40</span><br><span class="line">*funca_with_reference 0x104f34e40, *funca_without_reference     0x104f34e40</span><br><span class="line">funcb_with_reference 0x104f34e40, funcb_without_reference   0x104f34e40</span><br><span class="line">*funcb_with_reference 0x104f34e40, *funcb_without_reference     0x104f34e40</span><br><span class="line">funca</span><br><span class="line">Come from a</span><br><span class="line">funcb</span><br><span class="line">Come from b</span><br><span class="line">funca address0x7ffeeaccb948</span><br><span class="line">funcb address0x7ffeeaccb958</span><br></pre></td></tr></table></figure>
+<p>根据上述结果可以看出，本质上，Redis中的声明方式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="keyword">void</span> <span class="title">redisCommandProc</span><span class="params">(client *c)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>本质上是对函数类型的一个别名，而非对函数指针的一个别名。当使用的时候，需要使用 redisCommandProc * 来声明一个指向函数的指针 ，如果遗漏了指针声明，则会变成一个函数类型，将会产生编译时的错误。</p>
 <p>对于C语言中的函数名与函数指针，本质上二者并没有差别，都是存储了指向该函数的地址。因此，以下的调用其实是一样的：</p>
-<pre><code>func(&apos;a&apos;);
-(*func)(&apos;a&apos;);
-</code></pre><p>以上可以从 C99 Specification 中的 6.3.2.1.4 获得认证：</p>
-<pre><code>a function designator with type &quot;function returning type&quot; is converted to an expression that has type &quot;pointer to function returning type&quot;
-</code></pre>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">func(<span class="string">'a'</span>);</span><br><span class="line">(*func)(<span class="string">'a'</span>);</span><br></pre></td></tr></table></figure>
+<p>以上可以从 C99 Specification 中的 6.3.2.1.4 获得认证：</p>
+<blockquote>
+<p>a function designator with type “function returning type” is converted to an expression that has type “pointer to function returning type”</p>
+</blockquote>
+
 
       
 

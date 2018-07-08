@@ -35,17 +35,15 @@
               <li>Archive</li>
             </a>  
           
-            <a href="/tags/" class="Btn">
-              <li>Tags</li>
-            </a>  
-          
-            <a href="/about/" class="Btn">
-              <li>About</li>
-            </a>  
-          
         </ul>
     </section>
     <section class="media">
+        
+            
+                <a href="https://github.com/Yiiins">
+                    <img src="/assets/github.svg" />
+                </a>
+            
         
     </section>
 </aside>
@@ -60,128 +58,20 @@
 
     <section>
       <p>今天做了一个简单的测试，简单地探究了一下GCC下的Memory Layout。</p>
+<a id="more"></a>
 <p>程序的运行环境如下：</p>
-<pre><code>Linux indy2-login0 3.10.0-327.36.3.el7.x86_64 #1 SMP Mon Oct 24 16:09:20 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
-gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11)
-</code></pre><p>程序如下：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int main(int argc, char **argv){
-  int i,j,k;
-  double d;
-  float f;
-  void *p;
-
-  struct fred {
-     int a;
-     short s;
-     double d;
-     double d2;
-     short s2;
-  }var;
-
-  double a[30][30];
-  int *pd2;
-  double *pd;
-  pd2 = (int*) malloc(sizeof(int));
-  pd = (double*)malloc(sizeof(double));
-
-  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
-  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
-  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
-  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
-  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
-  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
-
-  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
-  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
-  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
-  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
-  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
-  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
-
-  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
-  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
-  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
-}
-</code></pre><p>采用gcc编译并运行这段程序，得到了如下的结果：</p>
-<pre><code>i 4 00007fffffffdc7c
-j 4 00007fffffffdc78
-k 4 00007fffffffdc74
-d 8 00007fffffffdc68
-f 4 00007fffffffdc64
-p 8 00007fffffffdc58
-var 32 00007fffffffdc30
-var.a 4 00007fffffffdc30
-var.s 2 00007fffffffdc34
-var.d 8 00007fffffffdc38
-var.s2 2 00007fffffffdc48
-var.d2 8 00007fffffffdc40
-a 7200 00007fffffffc010
-pd 8 0000000000602030
-pd2 8 0000000000602010
-</code></pre><p>可以看到，对于一个primitive，在该测试环境下，变量在stack上由高向低分配。对于一个结构体内部，所有的变量则在结构体对应的地址空间上由低向高顺序分配。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Linux indy2-login0 3.10.0-327.36.3.el7.x86_64 #1 SMP Mon Oct 24 16:09:20 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux</span><br><span class="line">gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11)</span><br></pre></td></tr></table></figure>
+<p>程序如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> i,j,k;</span><br><span class="line">  <span class="keyword">double</span> d;</span><br><span class="line">  <span class="keyword">float</span> f;</span><br><span class="line">  <span class="keyword">void</span> *p;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">fred</span> &#123;</span></span><br><span class="line">	  <span class="keyword">int</span> a;</span><br><span class="line">	  <span class="keyword">short</span> s;</span><br><span class="line">	  <span class="keyword">double</span> d;</span><br><span class="line">	  <span class="keyword">double</span> d2;</span><br><span class="line">	  <span class="keyword">short</span> s2;</span><br><span class="line">  &#125;var;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">double</span> a[<span class="number">30</span>][<span class="number">30</span>];</span><br><span class="line">  <span class="keyword">int</span> *pd2;</span><br><span class="line">  <span class="keyword">double</span> *pd;</span><br><span class="line">  pd2 = (<span class="keyword">int</span>*) <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">  pd = (<span class="keyword">double</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">double</span>));</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"i %d %016lx\n"</span>,<span class="keyword">sizeof</span>(i),&amp;i);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"j %d %016lx\n"</span>,<span class="keyword">sizeof</span>(j),&amp;j);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"k %d %016lx\n"</span>,<span class="keyword">sizeof</span>(k),&amp;k);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"d %d %016lx\n"</span>,<span class="keyword">sizeof</span>(d),&amp;d);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"f %d %016lx\n"</span>,<span class="keyword">sizeof</span>(f),&amp;f);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"p %d %016lx\n"</span>,<span class="keyword">sizeof</span>(p),&amp;p);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var),&amp;var);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.a %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.a),&amp;var.a);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.s %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.s),&amp;var.s);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.d %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.d),&amp;var.d);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.s2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.s2),&amp;var.s2);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.d2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.d2),&amp;var.d2);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"a %d %016lx\n"</span>,<span class="keyword">sizeof</span>(a),a);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"pd %d %016lx\n"</span>,<span class="keyword">sizeof</span>(pd),pd);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"pd2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(pd2),pd2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>采用gcc编译并运行这段程序，得到了如下的结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">i 4 00007fffffffdc7c</span><br><span class="line">j 4 00007fffffffdc78</span><br><span class="line">k 4 00007fffffffdc74</span><br><span class="line">d 8 00007fffffffdc68</span><br><span class="line">f 4 00007fffffffdc64</span><br><span class="line">p 8 00007fffffffdc58</span><br><span class="line">var 32 00007fffffffdc30</span><br><span class="line">var.a 4 00007fffffffdc30</span><br><span class="line">var.s 2 00007fffffffdc34</span><br><span class="line">var.d 8 00007fffffffdc38</span><br><span class="line">var.s2 2 00007fffffffdc48</span><br><span class="line">var.d2 8 00007fffffffdc40</span><br><span class="line">a 7200 00007fffffffc010</span><br><span class="line">pd 8 0000000000602030</span><br><span class="line">pd2 8 0000000000602010</span><br></pre></td></tr></table></figure>
+<p>可以看到，对于一个primitive，在该测试环境下，变量在stack上由高向低分配。对于一个结构体内部，所有的变量则在结构体对应的地址空间上由低向高顺序分配。</p>
 <p>这里注意到，对于var这个由1个int，2个short，2个double组成的结构体，理论上，这个结构体应该占据24byte的空间，然而实际上var这个结构体占据了32byte。这是由于GCC下会对该程序进行一个内存对齐（alignment）。通常来说，内存总线以字（word， 4byte）为最小单位进行传输。为了避免传输的数据被截断，需要重新指向来获取数据所造成的额外的开销，GCC对这个程序进行了内存对齐的处理。变量s是一个short型变量，在该环境下占2byte。假设紧随其后的double变量d在内存上紧接着s存储，当数据传输过来时，由于以字为单位进行传输，变量d将会被截断，为了恢复变量d需要做额外的处理。因此，在此处s后面，GCC填充了2byte的占位字节，使其称为一个完整的word，而相应的d则紧随其后，在两个齐整的word下存储。这就是为什么var这个结构体使用了比理想状态下更多的空间。</p>
 <p>下面我们对于代码进行小小的调整，我们修改var所对应的结构体，将s2变量的位置提升到s之下，其余部分不变：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int main(int argc, char **argv){
-  int i,j,k;
-  double d;
-  float f;
-  void *p;
-
-  struct fred {
-     int a;
-     short s;
-     short s2;
-     double d;
-     double d2;
-  }var;
-
-  double a[30][30];
-  int *pd2;
-  double *pd;
-  pd2 = (int*) malloc(sizeof(int));
-  pd = (double*)malloc(sizeof(double));
-
-  printf(&quot;i %d %016lx\n&quot;,sizeof(i),&amp;i);
-  printf(&quot;j %d %016lx\n&quot;,sizeof(j),&amp;j);
-  printf(&quot;k %d %016lx\n&quot;,sizeof(k),&amp;k);
-  printf(&quot;d %d %016lx\n&quot;,sizeof(d),&amp;d);
-  printf(&quot;f %d %016lx\n&quot;,sizeof(f),&amp;f);
-  printf(&quot;p %d %016lx\n&quot;,sizeof(p),&amp;p);
-
-  printf(&quot;var %d %016lx\n&quot;,sizeof(var),&amp;var);
-  printf(&quot;var.a %d %016lx\n&quot;,sizeof(var.a),&amp;var.a);
-  printf(&quot;var.s %d %016lx\n&quot;,sizeof(var.s),&amp;var.s);
-  printf(&quot;var.d %d %016lx\n&quot;,sizeof(var.d),&amp;var.d);
-  printf(&quot;var.s2 %d %016lx\n&quot;,sizeof(var.s2),&amp;var.s2);
-  printf(&quot;var.d2 %d %016lx\n&quot;,sizeof(var.d2),&amp;var.d2);
-
-  printf(&quot;a %d %016lx\n&quot;,sizeof(a),a);
-  printf(&quot;pd %d %016lx\n&quot;,sizeof(pd),pd);
-  printf(&quot;pd2 %d %016lx\n&quot;,sizeof(pd2),pd2);
-}
-</code></pre><p>然后编译执行程序，我们得到的如下的结果：</p>
-<pre><code>i 4 00007fffffffdc7c
-j 4 00007fffffffdc78
-k 4 00007fffffffdc74
-d 8 00007fffffffdc68
-f 4 00007fffffffdc64
-p 8 00007fffffffdc58
-var 24 00007fffffffdc40
-var.a 4 00007fffffffdc40
-var.s 2 00007fffffffdc44
-var.d 8 00007fffffffdc48
-var.s2 2 00007fffffffdc46
-var.d2 8 00007fffffffdc50
-a 7200 00007fffffffc020
-pd 8 0000000000602030
-pd2 8 0000000000602010
-</code></pre><p>此处我们看到，结构体对象var与我们预想的一样，占用了24byte的空间。这是因为简单的重排，使两个short变量s与s1正好占据一个word，避免了各自的对齐从而减少了空间的开销。由此可见，对于C语言中的结构体，在GCC下所有的成员变量会以对应的顺序进行存储，对于无法整齐排列在内存中的变量，会进行内存对齐，通过填充空的占位字节使其占据完整的一个word。通过对于变量顺序的调整，可以减少程序中的内存的使用！</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> i,j,k;</span><br><span class="line">  <span class="keyword">double</span> d;</span><br><span class="line">  <span class="keyword">float</span> f;</span><br><span class="line">  <span class="keyword">void</span> *p;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">fred</span> &#123;</span></span><br><span class="line">     <span class="keyword">int</span> a;</span><br><span class="line">     <span class="keyword">short</span> s;</span><br><span class="line">     <span class="keyword">short</span> s2;</span><br><span class="line">     <span class="keyword">double</span> d;</span><br><span class="line">     <span class="keyword">double</span> d2;</span><br><span class="line">  &#125;var;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">double</span> a[<span class="number">30</span>][<span class="number">30</span>];</span><br><span class="line">  <span class="keyword">int</span> *pd2;</span><br><span class="line">  <span class="keyword">double</span> *pd;</span><br><span class="line">  pd2 = (<span class="keyword">int</span>*) <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">  pd = (<span class="keyword">double</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">double</span>));</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"i %d %016lx\n"</span>,<span class="keyword">sizeof</span>(i),&amp;i);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"j %d %016lx\n"</span>,<span class="keyword">sizeof</span>(j),&amp;j);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"k %d %016lx\n"</span>,<span class="keyword">sizeof</span>(k),&amp;k);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"d %d %016lx\n"</span>,<span class="keyword">sizeof</span>(d),&amp;d);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"f %d %016lx\n"</span>,<span class="keyword">sizeof</span>(f),&amp;f);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"p %d %016lx\n"</span>,<span class="keyword">sizeof</span>(p),&amp;p);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var),&amp;var);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.a %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.a),&amp;var.a);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.s %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.s),&amp;var.s);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.d %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.d),&amp;var.d);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.s2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.s2),&amp;var.s2);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"var.d2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(var.d2),&amp;var.d2);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"a %d %016lx\n"</span>,<span class="keyword">sizeof</span>(a),a);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"pd %d %016lx\n"</span>,<span class="keyword">sizeof</span>(pd),pd);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"pd2 %d %016lx\n"</span>,<span class="keyword">sizeof</span>(pd2),pd2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后编译执行程序，我们得到的如下的结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">i 4 00007fffffffdc7c</span><br><span class="line">j 4 00007fffffffdc78</span><br><span class="line">k 4 00007fffffffdc74</span><br><span class="line">d 8 00007fffffffdc68</span><br><span class="line">f 4 00007fffffffdc64</span><br><span class="line">p 8 00007fffffffdc58</span><br><span class="line">var 24 00007fffffffdc40</span><br><span class="line">var.a 4 00007fffffffdc40</span><br><span class="line">var.s 2 00007fffffffdc44</span><br><span class="line">var.d 8 00007fffffffdc48</span><br><span class="line">var.s2 2 00007fffffffdc46</span><br><span class="line">var.d2 8 00007fffffffdc50</span><br><span class="line">a 7200 00007fffffffc020</span><br><span class="line">pd 8 0000000000602030</span><br><span class="line">pd2 8 0000000000602010</span><br></pre></td></tr></table></figure>
+<p>此处我们看到，结构体对象var与我们预想的一样，占用了24byte的空间。这是因为简单的重排，使两个short变量s与s1正好占据一个word，避免了各自的对齐从而减少了空间的开销。由此可见，对于C语言中的结构体，在GCC下所有的成员变量会以对应的顺序进行存储，对于无法整齐排列在内存中的变量，会进行内存对齐，通过填充空的占位字节使其占据完整的一个word。通过对于变量顺序的调整，可以减少程序中的内存的使用！</p>
 
 
       
